@@ -1,0 +1,7 @@
+data/
+tests/data/
+
+*.exe
+*.pdb
+*.raddbg
+*.rdi
