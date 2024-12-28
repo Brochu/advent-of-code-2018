@@ -59,17 +59,42 @@ d04run :: proc (p1, p2: ^strings.Builder) {
     strings.write_int(p1, 00);
     strings.write_int(p2, 00);
 
-    /*
+    sb: strings.Builder;
+    strings.builder_init(&sb, 0, 255);
+    height: c.float : 23 when EXAMPLE else 5;
+    fsize: c.float : 23 when EXAMPLE else 5;
+    curr_y: c.float = 0;
+    xoff: c.float : 25;
+    yoff: c.float : 100;
     rl.InitWindow(800, 600, strings.to_cstring(&title));
     rl.SetTargetFPS(60);
+
+    font := rl.LoadFont("./data/JBM-Medium.ttf");
+    fmt.printfln("%v", font);
     for !rl.WindowShouldClose() {
         rl.BeginDrawing();
         rl.ClearBackground(rl.BLACK);
 
+        for m in entries[0].date.m..=entries[len(entries)-1].date.m {
+            for d in entries[0].date.d..=entries[len(entries)-1].date.d {
+                strings.write_int(&sb, m);
+                strings.write_string(&sb, "-");
+                strings.write_int(&sb, d);
+                strings.write_string(&sb, " ");
+                for minute in 0..<60 {
+                    strings.write_string(&sb, ".");
+                }
+
+                rl.DrawTextEx(font, strings.to_cstring(&sb), { xoff, curr_y + yoff }, fsize, 1, rl.WHITE);
+                curr_y += height;
+                strings.builder_reset(&sb);
+            }
+        }
+
+        curr_y = 0;
         rl.EndDrawing();
     }
     rl.CloseWindow();
-    */
 }
 
 @(private="file")
