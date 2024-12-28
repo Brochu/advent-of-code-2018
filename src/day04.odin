@@ -50,10 +50,10 @@ d04run :: proc (p1, p2: ^strings.Builder) {
             { strconv.atoi(time_es[0]), strconv.atoi(time_es[1]) },
             gid, s };
     }
-
+    slice.sort_by(entries, sort);
     fmt.println("ENTRIES:");
     for e in entries {
-        fmt.printfln("    %v", e);
+        fmt.printfln("    %2.0v", e);
     }
 
     strings.write_int(p1, 00);
@@ -70,4 +70,14 @@ d04run :: proc (p1, p2: ^strings.Builder) {
     }
     rl.CloseWindow();
     */
+}
+
+@(private="file")
+sort :: proc (l, r: Entry) -> bool {
+    if l.date.y != r.date.y do return l.date.y < r.date.y;
+    if l.date.m != r.date.m do return l.date.m < r.date.m;
+    if l.date.d != r.date.d do return l.date.d < r.date.d;
+    if l.time.h != r.time.h do return l.time.h < r.time.h;
+    if l.time.m != r.time.m do return l.time.m < r.time.m;
+    return false;
 }
