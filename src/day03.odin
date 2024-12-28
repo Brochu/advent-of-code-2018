@@ -18,7 +18,7 @@ overlaps: map[ivec2]int;
 
 @(private="file")
 OColors: []rl.Color = {
-    rl.GRAY,
+    rl.BLACK,
     rl.SKYBLUE,
     rl.BLUE,
     rl.RED,

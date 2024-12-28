@@ -15,11 +15,14 @@ solutions: []day_proc = {
     d01run,
     d02run,
     d03run,
+    d04run,
 };
 title : strings.Builder;
 
 ivec2 :: struct { x, y: int };
 vec2 :: struct { x, y: f32 };
+date :: struct { y, m, d: int };
+time :: struct { h, m: int };
 
 main :: proc() {
     day, valid := which_day();
