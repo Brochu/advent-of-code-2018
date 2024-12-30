@@ -17,92 +17,96 @@ State :: enum u8 {
 }
 
 @(private="file")
-Entry :: struct {
-    date: date,
-    time: time,
+Log :: struct {
     guard: int,
-    state: State,
+    swaps: []u8,
 }
+
+@(private="file")
+logs: map[date]Log;
 
 d04run :: proc (p1, p2: ^strings.Builder) {
     input := strings.trim(#load(input_file, string) or_else "", "\r\n");
     lines := strings.split_lines(input);
-    entries := make([]Entry, len(lines));
+    logs = make(map[date]Log);
     for line, i in lines {
         data := strings.split_n(line, "] ", 2);
         datetime := strings.split_n(data[0][1:], " ", 2);
         date_es := strings.split(datetime[0], "-");
+        d := date{ strconv.atoi(date_es[0]), strconv.atoi(date_es[1]), strconv.atoi(date_es[2]) }
         time_es := strings.split(datetime[1], ":");
+        t := time{ strconv.atoi(time_es[0]), strconv.atoi(time_es[1]) }
 
-        sharp_idx := strings.index_byte(data[1], '#');
-        gid := -1;
-        s: State;
-        if sharp_idx == -1 {
-            s = State.WAKEUP if strings.contains(data[1], "wake") else State.ASLEEP;
+        if _, ok := &logs[d]; !ok do logs[d] = Log{ -1, make([]u8, 60) };
+
+        if sharp_idx := strings.index_byte(data[1], '#'); sharp_idx >= 0 {
+            entry := &logs[d];
+            entry.guard = strconv.atoi(data[1][sharp_idx+1:]);
         }
         else {
-            gid = strconv.atoi(data[1][sharp_idx+1:]);
-            s = State.START;
+            entry := &logs[d];
+            entry.swaps[t.m] = 1;
         }
-
-        entries[i] = Entry{
-            { strconv.atoi(date_es[0]), strconv.atoi(date_es[1]), strconv.atoi(date_es[2]) },
-            { strconv.atoi(time_es[0]), strconv.atoi(time_es[1]) },
-            gid, s };
     }
-    slice.sort_by(entries, sort);
-    fmt.println("ENTRIES:");
-    for e in entries {
-        fmt.printfln("    %2.0v", e);
-    }
+    ds, _ := slice.map_keys(logs);
+    slice.sort_by(ds, date_sort);
+    fmt.printfln("[%v] dates: %v", len(ds), ds);
 
     strings.write_int(p1, 00);
     strings.write_int(p2, 00);
 
+    cam: rl.Camera2D = {
+        { 0, 0 },
+        { 0, 0 },
+        0,
+        1,
+    };
+    fsize: c.float : 20;
+    xoff, yoff: c.float : 25, 75;
+    scroll_speed: c.float : 60;
     sb: strings.Builder;
     strings.builder_init(&sb, 0, 255);
-    height: c.float : 23 when EXAMPLE else 5;
-    fsize: c.float : 23 when EXAMPLE else 5;
-    curr_y: c.float = 0;
-    xoff: c.float : 25;
-    yoff: c.float : 100;
-    rl.InitWindow(800, 600, strings.to_cstring(&title));
+    rl.InitWindow(800, 800, strings.to_cstring(&title));
     rl.SetTargetFPS(60);
-
     font := rl.LoadFont("./data/JBM-Medium.ttf");
-    fmt.printfln("%v", font);
     for !rl.WindowShouldClose() {
+        wheel_move := rl.GetMouseWheelMove();
+        if (wheel_move != 0) do cam.offset.y += wheel_move * scroll_speed;
+
         rl.BeginDrawing();
         rl.ClearBackground(rl.BLACK);
 
-        for m in entries[0].date.m..=entries[len(entries)-1].date.m {
-            for d in entries[0].date.d..=entries[len(entries)-1].date.d {
-                strings.write_int(&sb, m);
-                strings.write_string(&sb, "-");
-                strings.write_int(&sb, d);
-                strings.write_string(&sb, " ");
-                for minute in 0..<60 {
-                    strings.write_string(&sb, ".");
-                }
+        rl.BeginMode2D(cam);
+        for date, i in ds {
+            l := logs[date];
+            strings.write_int(&sb, date.m);
+            strings.write_string(&sb, " - ");
+            strings.write_int(&sb, date.d);
+            strings.write_string(&sb, " [");
+            strings.write_int(&sb, l.guard);
+            strings.write_string(&sb, "]");
 
-                rl.DrawTextEx(font, strings.to_cstring(&sb), { xoff, curr_y + yoff }, fsize, 1, rl.WHITE);
-                curr_y += height;
-                strings.builder_reset(&sb);
+            state := true;
+            for s in l.swaps {
+                if s == 1 do state = !state;
+                strings.write_string(&sb, "." if state else "#");
             }
-        }
 
-        curr_y = 0;
+            ypos := (fsize * c.float(i)) + yoff;
+            rl.DrawTextEx(font, strings.to_cstring(&sb), { xoff, ypos }, fsize, 1, rl.WHITE);
+            strings.builder_reset(&sb);
+        }
+        rl.EndMode2D();
+
         rl.EndDrawing();
     }
     rl.CloseWindow();
 }
 
 @(private="file")
-sort :: proc (l, r: Entry) -> bool {
-    if l.date.y != r.date.y do return l.date.y < r.date.y;
-    if l.date.m != r.date.m do return l.date.m < r.date.m;
-    if l.date.d != r.date.d do return l.date.d < r.date.d;
-    if l.time.h != r.time.h do return l.time.h < r.time.h;
-    if l.time.m != r.time.m do return l.time.m < r.time.m;
+date_sort :: proc (l, r: date) -> bool {
+    if l.y != r.y do return l.y < r.y;
+    if l.m != r.m do return l.m < r.m;
+    if l.d != r.d do return l.d < r.d;
     return false;
 }
