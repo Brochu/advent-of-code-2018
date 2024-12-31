@@ -10,47 +10,57 @@ import rl "vendor:raylib"
 input_file :: "../data/day04.ex" when EXAMPLE else "../data/day04.in"
 
 @(private="file")
-State :: enum u8 {
-    START,
-    WAKEUP,
-    ASLEEP,
-}
+entries: map[DateTime]int;
 
 @(private="file")
 Log :: struct {
     guard: int,
     swaps: []u8,
-}
+};
 
 @(private="file")
-logs: map[date]Log;
+logs: map[Date]Log;
 
 d04run :: proc (p1, p2: ^strings.Builder) {
     input := strings.trim(#load(input_file, string) or_else "", "\r\n");
     lines := strings.split_lines(input);
-    logs = make(map[date]Log);
+    entries = make(map[DateTime]int);
     for line, i in lines {
         data := strings.split_n(line, "] ", 2);
         datetime := strings.split_n(data[0][1:], " ", 2);
         date_es := strings.split(datetime[0], "-");
-        d := date{ strconv.atoi(date_es[0]), strconv.atoi(date_es[1]), strconv.atoi(date_es[2]) }
         time_es := strings.split(datetime[1], ":");
-        t := time{ strconv.atoi(time_es[0]), strconv.atoi(time_es[1]) }
+        dt := DateTime{
+            Date{ strconv.atoi(date_es[0]), strconv.atoi(date_es[1]), strconv.atoi(date_es[2]) },
+            Time{ strconv.atoi(time_es[0]), strconv.atoi(time_es[1]) },
+        };
 
-        if _, ok := &logs[d]; !ok do logs[d] = Log{ -1, make([]u8, 60) };
+        if _, ok := &entries[dt]; !ok do entries[dt] = -1;
 
         if sharp_idx := strings.index_byte(data[1], '#'); sharp_idx >= 0 {
-            entry := &logs[d];
-            entry.guard = strconv.atoi(data[1][sharp_idx+1:]);
-        }
-        else {
-            entry := &logs[d];
-            entry.swaps[t.m] = 1;
+            entry := &entries[dt];
+            entry^ = strconv.atoi(data[1][sharp_idx+1:]);
         }
     }
-    ds, _ := slice.map_keys(logs);
-    slice.sort_by(ds, date_sort);
-    fmt.printfln("[%v] dates: %v", len(ds), ds);
+    ds, _ := slice.map_keys(entries);
+    slice.sort_by(ds, datetime_sort);
+
+    logs = make(map[Date]Log);
+    curr_guard := -1;
+    for dt in ds {
+        if entries[dt] > -1 {
+            curr_guard = entries[dt];
+            continue;
+        }
+        else {
+            if _, ok := &logs[dt.date]; !ok do logs[dt.date] = Log{ -1, make([]u8, 60) };
+            log := &logs[dt.date];
+            log.guard = curr_guard;
+            log.swaps[dt.time.m] = 1;
+        }
+    }
+    log_keys, _ := slice.map_keys(logs);
+    slice.sort_by(log_keys, date_sort);
 
     strings.write_int(p1, 00);
     strings.write_int(p2, 00);
@@ -77,19 +87,20 @@ d04run :: proc (p1, p2: ^strings.Builder) {
         rl.ClearBackground(rl.BLACK);
 
         rl.BeginMode2D(cam);
-        for date, i in ds {
+        for date, i in log_keys {
             l := logs[date];
             strings.write_int(&sb, date.m);
             strings.write_string(&sb, " - ");
             strings.write_int(&sb, date.d);
             strings.write_string(&sb, " [");
             strings.write_int(&sb, l.guard);
-            strings.write_string(&sb, "]");
+            strings.write_string(&sb, "] : ");
 
             state := true;
-            for s in l.swaps {
-                if s == 1 do state = !state;
-                strings.write_string(&sb, "." if state else "#");
+            for i in 0..<60 {
+                if l.swaps[i] == 1 do state = !state;
+                char := "." if state else "#";
+                strings.write_string(&sb, char);
             }
 
             ypos := (fsize * c.float(i)) + yoff;
@@ -104,9 +115,19 @@ d04run :: proc (p1, p2: ^strings.Builder) {
 }
 
 @(private="file")
-date_sort :: proc (l, r: date) -> bool {
+date_sort :: proc (l, r: Date) -> bool {
     if l.y != r.y do return l.y < r.y;
     if l.m != r.m do return l.m < r.m;
     if l.d != r.d do return l.d < r.d;
+    return false;
+}
+
+@(private="file")
+datetime_sort :: proc (l, r: DateTime) -> bool {
+    if l.date.y != r.date.y do return l.date.y < r.date.y;
+    if l.date.m != r.date.m do return l.date.m < r.date.m;
+    if l.date.d != r.date.d do return l.date.d < r.date.d;
+    if l.time.h != r.time.h do return l.time.h < r.time.h;
+    if l.time.m != r.time.m do return l.time.m < r.time.m;
     return false;
 }

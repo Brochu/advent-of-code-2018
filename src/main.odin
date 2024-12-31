@@ -21,8 +21,10 @@ title : strings.Builder;
 
 ivec2 :: struct { x, y: int };
 vec2 :: struct { x, y: f32 };
-date :: struct { y, m, d: int };
-time :: struct { h, m: int };
+
+Date :: struct { y, m, d: int };
+Time :: struct { h, m: int };
+DateTime :: struct { date: Date, time: Time };
 
 main :: proc() {
     day, valid := which_day();
